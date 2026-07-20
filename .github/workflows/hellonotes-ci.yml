@@ -1,0 +1,200 @@
+name: HelloNotes CI and Unsigned Builds
+
+"on":
+  workflow_dispatch:
+    inputs:
+      upload_full_derived_data_on_failure:
+        description: Upload the complete DerivedData directory when a build fails (can be very large)
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hellonotes-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XCODE_VERSION: "26.5"
+  PROJECT: HelloNotes.xcodeproj
+  SCHEME: HelloNotes
+  CONFIGURATION: Release
+  BUILD_ROOT: ${{ github.workspace }}/build/ci
+  SPM_CLONE_DIR: ${{ github.workspace }}/build/ci/SourcePackages
+  NSUnbufferedIO: "YES"
+
+jobs:
+  build:
+    name: Build ${{ matrix.display_name }}
+    runs-on: macos-26
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ios
+            display_name: iOS unsigned IPA
+            distribution_artifact: HelloNotes-ios-distribution
+          - platform: macos
+            display_name: macOS unsigned app
+            distribution_artifact: HelloNotes-macos-distribution
+
+    env:
+      PLATFORM: ${{ matrix.platform }}
+      PLATFORM_BUILD_ROOT: ${{ github.workspace }}/build/ci/${{ matrix.platform }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select Xcode and record runner environment
+        shell: bash
+        run: bash scripts/ci/select-xcode.sh
+
+      - name: Cache Swift Package Manager downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            build/ci/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm/security
+            ~/Library/org.swift.swiftpm/configuration
+          key: spm-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-xcode-${{ env.XCODE_VERSION }}-${{ hashFiles('**/Package.resolved', '**/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-xcode-${{ env.XCODE_VERSION }}-
+            spm-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-
+
+      - name: Resolve Swift packages with retry
+        shell: bash
+        run: bash scripts/ci/resolve-packages.sh
+
+      - name: Compile and package
+        id: compile
+        continue-on-error: true
+        shell: bash
+        run: |
+          if [[ "${PLATFORM}" == "ios" ]]; then
+            bash scripts/ci/build-ios-unsigned.sh
+          else
+            bash scripts/ci/build-macos-unsigned.sh
+          fi
+
+      - name: Collect diagnostics and write job summary
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.compile.outcome || 'not-run' }}
+        run: bash scripts/ci/collect-diagnostics.sh
+
+      - name: Package complete DerivedData after failure
+        if: >-
+          steps.compile.outcome == 'failure' &&
+          github.event_name == 'workflow_dispatch' &&
+          inputs.upload_full_derived_data_on_failure
+        shell: bash
+        run: bash scripts/ci/package-full-derived-data.sh
+
+      - name: Upload distribution files
+        if: steps.compile.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.distribution_artifact }}
+          path: ${{ env.PLATFORM_BUILD_ROOT }}/artifacts/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload diagnostics in all cases
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: HelloNotes-${{ matrix.platform }}-diagnostics
+          path: |
+            ${{ env.PLATFORM_BUILD_ROOT }}/logs/
+            ${{ env.PLATFORM_BUILD_ROOT }}/diagnostics/
+            ${{ env.PLATFORM_BUILD_ROOT }}/*.xcresult/
+            ${{ env.PLATFORM_BUILD_ROOT }}/DerivedData/Logs/
+            ${{ env.PLATFORM_BUILD_ROOT }}/DerivedData-failure.tar.gz
+            ${{ env.BUILD_ROOT }}/runner-environment.log
+            ${{ env.BUILD_ROOT }}/package-resolution.log
+            ${{ env.BUILD_ROOT }}/package-resolution-logs/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6
+
+      - name: Mark job failed when compilation failed
+        if: steps.compile.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "The ${PLATFORM} build failed. Download the diagnostics artifact for the full logs." >&2
+          exit 1
+
+  release:
+    name: Publish tag assets
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all successful distribution artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: HelloNotes-*-distribution
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -Eeuo pipefail
+
+          echo "Release files:"
+          find release-assets -maxdepth 3 -type f -print | sort
+
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find release-assets -type f -print0)
+
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No release files were downloaded." >&2
+            exit 1
+          fi
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" "${files[@]}" --clobber
+          else
+            gh release create "${TAG_NAME}" "${files[@]}" \
+              --verify-tag \
+              --generate-notes \
+              --title "HelloNotes ${TAG_NAME}"
+          fi
+
+          {
+            echo "## GitHub Release"
+            echo
+            echo "Published build assets for \`${TAG_NAME}\`."
+            echo
+            echo "### Files"
+            for file in "${files[@]}"; do
+              echo "- \`$(basename "$file")\`"
+            done
+          } >> "${GITHUB_STEP_SUMMARY}"
