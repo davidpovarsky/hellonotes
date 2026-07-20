@@ -1,0 +1,97 @@
+name: Build Unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unsigned-ipa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-unsigned-ipa:
+    name: Compile and package unsigned IPA
+    runs-on: macos-26
+    timeout-minutes: 120
+
+    env:
+      BUILD_ROOT: ${{ github.workspace }}/build/unsigned-ipa
+      CI: "true"
+      NSUnbufferedIO: "YES"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Select Xcode 26.5 and capture runner details
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "${BUILD_ROOT}/logs"
+
+          {
+            echo "Runner: ${RUNNER_NAME}"
+            echo "Architecture: $(uname -m)"
+            sw_vers
+            echo
+            echo "Installed Xcode applications:"
+            /bin/ls -1d /Applications/Xcode*.app || true
+          } | tee "${BUILD_ROOT}/logs/runner-environment.log"
+
+          if [[ -d /Applications/Xcode_26.5.app ]]; then
+            XCODE_APP=/Applications/Xcode_26.5.app
+          else
+            XCODE_APP="$(/bin/ls -1d /Applications/Xcode_26.5*.app 2>/dev/null | /usr/bin/tail -n 1 || true)"
+          fi
+
+          if [[ -z "${XCODE_APP}" || ! -d "${XCODE_APP}" ]]; then
+            echo "error: Xcode 26.5 is required because the project targets iOS 26.5." | tee -a "${BUILD_ROOT}/logs/runner-environment.log"
+            exit 1
+          fi
+
+          sudo xcode-select --switch "${XCODE_APP}/Contents/Developer"
+          echo "DEVELOPER_DIR=${XCODE_APP}/Contents/Developer" >> "${GITHUB_ENV}"
+
+          {
+            echo
+            echo "Selected Xcode: ${XCODE_APP}"
+            xcode-select -p
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+          } | tee -a "${BUILD_ROOT}/logs/runner-environment.log"
+
+      - name: Build and package unsigned IPA
+        shell: bash
+        run: bash scripts/build-unsigned-ipa.sh
+
+      - name: Upload unsigned IPA
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: HelloNotes-unsigned-ipa-${{ github.run_number }}
+          path: |
+            build/unsigned-ipa/artifacts/*.ipa
+            build/unsigned-ipa/artifacts/*.sha256
+            build/unsigned-ipa/artifacts/build-output.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: HelloNotes-build-diagnostics-${{ github.run_number }}
+          path: |
+            build/unsigned-ipa/logs/
+            build/unsigned-ipa/*.xcresult/
+            build/unsigned-ipa/DerivedData/Logs/
+          if-no-files-found: warn
+          retention-days: 30
