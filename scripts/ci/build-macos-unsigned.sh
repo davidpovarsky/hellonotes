@@ -6,6 +6,7 @@ ROOT_DIR="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
 PROJECT="${PROJECT:-HelloNotes.xcodeproj}"
 SCHEME="${SCHEME:-HelloNotes}"
 CONFIGURATION="${CONFIGURATION:-Release}"
+MACOS_ARCHS="${MACOS_ARCHS:-arm64}"
 APP_NAME="${APP_NAME:-HelloNotes}"
 BUILD_ROOT="${PLATFORM_BUILD_ROOT:-${ROOT_DIR}/build/ci/macos}"
 DERIVED_DATA="${BUILD_ROOT}/DerivedData"
@@ -33,6 +34,7 @@ xcodebuild \
   CODE_SIGNING_REQUIRED=NO \
   'CODE_SIGN_IDENTITY=' \
   'DEVELOPMENT_TEAM=' \
+  "ARCHS=${MACOS_ARCHS}" \
   > "${SETTINGS_LOG}" 2>&1
 
 start_epoch="$(date +%s)"
@@ -54,6 +56,7 @@ set +e
     CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
     "CODE_SIGN_IDENTITY=" \
     "DEVELOPMENT_TEAM=" \
+    "ARCHS=$8" \
     COMPILER_INDEX_STORE_ENABLE=NO \
     SKIP_INSTALL=NO \
     archive
@@ -65,6 +68,7 @@ set +e
   "${DERIVED_DATA}" \
   "${SPM_CLONE_DIR}" \
   "${RESULT_BUNDLE}" \
+  "${MACOS_ARCHS}" \
   2> >(tee "${TIMING_LOG}" >&2) \
   | tee "${BUILD_LOG}"
 build_status=${PIPESTATUS[0]}
@@ -113,6 +117,7 @@ cat > "${ARTIFACT_DIR}/build-manifest.json" <<JSON
 {
   "product": "${APP_NAME}",
   "platform": "macOS",
+  "architectures": "${MACOS_ARCHS}",
   "signed": false,
   "bundleIdentifier": "${bundle_id}",
   "version": "${version}",
@@ -130,6 +135,7 @@ cat > "${ARTIFACT_DIR}/build-output.txt" <<EOF_OUTPUT
 APP_ZIP=${APP_ZIP}
 XCARCHIVE_ZIP=${ARCHIVE_ZIP}
 APP_PATH=${APP_PATH}
+ARCHITECTURES=${MACOS_ARCHS}
 BUNDLE_IDENTIFIER=${bundle_id}
 VERSION=${version}
 BUILD_NUMBER=${build_number}
