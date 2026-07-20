@@ -7,6 +7,7 @@ PROJECT="${PROJECT:-HelloNotes.xcodeproj}"
 SCHEME="${SCHEME:-HelloNotes}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 MACOS_ARCHS="${MACOS_ARCHS:-arm64}"
+MACOS_SWIFT_OPTIMIZATION_LEVEL="${MACOS_SWIFT_OPTIMIZATION_LEVEL:--Onone}"
 APP_NAME="${APP_NAME:-HelloNotes}"
 BUILD_ROOT="${PLATFORM_BUILD_ROOT:-${ROOT_DIR}/build/ci/macos}"
 DERIVED_DATA="${BUILD_ROOT}/DerivedData"
@@ -35,6 +36,7 @@ xcodebuild \
   'CODE_SIGN_IDENTITY=' \
   'DEVELOPMENT_TEAM=' \
   "ARCHS=${MACOS_ARCHS}" \
+  "SWIFT_OPTIMIZATION_LEVEL=${MACOS_SWIFT_OPTIMIZATION_LEVEL}" \
   > "${SETTINGS_LOG}" 2>&1
 
 start_epoch="$(date +%s)"
@@ -57,6 +59,7 @@ set +e
     "CODE_SIGN_IDENTITY=" \
     "DEVELOPMENT_TEAM=" \
     "ARCHS=$8" \
+    "SWIFT_OPTIMIZATION_LEVEL=$9" \
     COMPILER_INDEX_STORE_ENABLE=NO \
     SKIP_INSTALL=NO \
     archive
@@ -69,6 +72,7 @@ set +e
   "${SPM_CLONE_DIR}" \
   "${RESULT_BUNDLE}" \
   "${MACOS_ARCHS}" \
+  "${MACOS_SWIFT_OPTIMIZATION_LEVEL}" \
   2> >(tee "${TIMING_LOG}" >&2) \
   | tee "${BUILD_LOG}"
 build_status=${PIPESTATUS[0]}
@@ -118,6 +122,7 @@ cat > "${ARTIFACT_DIR}/build-manifest.json" <<JSON
   "product": "${APP_NAME}",
   "platform": "macOS",
   "architectures": "${MACOS_ARCHS}",
+  "swiftOptimizationLevel": "${MACOS_SWIFT_OPTIMIZATION_LEVEL}",
   "signed": false,
   "bundleIdentifier": "${bundle_id}",
   "version": "${version}",
@@ -136,6 +141,7 @@ APP_ZIP=${APP_ZIP}
 XCARCHIVE_ZIP=${ARCHIVE_ZIP}
 APP_PATH=${APP_PATH}
 ARCHITECTURES=${MACOS_ARCHS}
+SWIFT_OPTIMIZATION_LEVEL=${MACOS_SWIFT_OPTIMIZATION_LEVEL}
 BUNDLE_IDENTIFIER=${bundle_id}
 VERSION=${version}
 BUILD_NUMBER=${build_number}
