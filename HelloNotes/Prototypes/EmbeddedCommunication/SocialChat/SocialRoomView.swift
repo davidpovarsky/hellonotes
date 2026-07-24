@@ -22,7 +22,7 @@ struct SocialRoomView: View {
         }
         .setAvailableInputs([.text])
         .chatTheme(themeColor: .accentColor, background: .systemDefault)
-        .keyboardDismissMode(.interactive)
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle(conversation.name)
         .navigationBarTitleDisplayMode(.inline)
         .alert(
