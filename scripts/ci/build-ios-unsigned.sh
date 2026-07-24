@@ -9,6 +9,7 @@ CONFIGURATION="${CONFIGURATION:-Release}"
 APP_NAME="${APP_NAME:-HelloNotes}"
 BUILD_ROOT="${PLATFORM_BUILD_ROOT:-${ROOT_DIR}/build/ci/ios}"
 DERIVED_DATA="${BUILD_ROOT}/DerivedData"
+SIMULATOR_DERIVED_DATA="${BUILD_ROOT}/SimulatorDerivedData"
 ARCHIVE_PATH="${BUILD_ROOT}/${APP_NAME}-iOS.xcarchive"
 RESULT_BUNDLE="${BUILD_ROOT}/${APP_NAME}-iOS.xcresult"
 LOG_DIR="${BUILD_ROOT}/logs"
@@ -19,7 +20,7 @@ BUILD_LOG="${LOG_DIR}/xcodebuild-ios.log"
 SETTINGS_LOG="${LOG_DIR}/build-settings-ios.log"
 TIMING_LOG="${LOG_DIR}/build-timing-ios.log"
 
-rm -rf "${DERIVED_DATA}" "${ARCHIVE_PATH}" "${RESULT_BUNDLE}" "${ARTIFACT_DIR}" "${PACKAGE_DIR}"
+rm -rf "${DERIVED_DATA}" "${SIMULATOR_DERIVED_DATA}" "${ARCHIVE_PATH}" "${RESULT_BUNDLE}" "${ARTIFACT_DIR}" "${PACKAGE_DIR}"
 mkdir -p "${DERIVED_DATA}" "${LOG_DIR}" "${ARTIFACT_DIR}" "${PACKAGE_DIR}/Payload"
 
 {
@@ -174,6 +175,75 @@ VERSION=${version}
 BUILD_NUMBER=${build_number}
 ELAPSED_SECONDS=$((end_epoch - start_epoch))
 EOF_OUTPUT
+
+SIMULATOR_BUILD_LOG="${LOG_DIR}/xcodebuild-ios-simulator.log"
+xcodebuild build \
+  -project "${ROOT_DIR}/${PROJECT}" \
+  -scheme "${SCHEME}" \
+  -configuration Debug \
+  -sdk iphonesimulator \
+  -destination "generic/platform=iOS Simulator" \
+  -derivedDataPath "${SIMULATOR_DERIVED_DATA}" \
+  -clonedSourcePackagesDirPath "${SPM_CLONE_DIR}" \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  'CODE_SIGN_IDENTITY=' \
+  'DEVELOPMENT_TEAM=' \
+  2>&1 | tee "${SIMULATOR_BUILD_LOG}"
+
+SIMULATOR_APP_PATH="${SIMULATOR_DERIVED_DATA}/Build/Products/Debug-iphonesimulator/${APP_NAME}.app"
+if [[ ! -d "${SIMULATOR_APP_PATH}" ]]; then
+  echo "error: Simulator build succeeded, but ${SIMULATOR_APP_PATH} was not found." >&2
+  exit 5
+fi
+
+bash "${ROOT_DIR}/scripts/ci/verify-embedded-frameworks.sh" "${SIMULATOR_APP_PATH}" \
+  | tee "${LOG_DIR}/verify-simulator-frameworks.log"
+
+simulator_bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${SIMULATOR_APP_PATH}/Info.plist")"
+simulator_udid="$(xcrun simctl list devices available -j | /usr/bin/python3 -c '
+import json
+import sys
+
+devices = json.load(sys.stdin)["devices"]
+for runtime_devices in devices.values():
+    for device in runtime_devices:
+        if device["name"].startswith("iPhone") and device.get("isAvailable", False):
+            print(device["udid"])
+            raise SystemExit
+raise SystemExit("No available iPhone simulator was found")
+')"
+
+echo "Booting simulator ${simulator_udid}"
+xcrun simctl boot "${simulator_udid}" 2>/dev/null || true
+xcrun simctl bootstatus "${simulator_udid}" -b
+xcrun simctl install "${simulator_udid}" "${SIMULATOR_APP_PATH}"
+
+launch_output="$(xcrun simctl launch "${simulator_udid}" "${simulator_bundle_id}")"
+printf '%s\n' "${launch_output}" | tee "${LOG_DIR}/launch-simulator.log"
+app_pid="${launch_output##*: }"
+sleep 10
+
+if ! kill -0 "${app_pid}" 2>/dev/null; then
+  echo "error: ${APP_NAME} exited within 10 seconds of launch." >&2
+  xcrun simctl spawn "${simulator_udid}" log show \
+    --last 2m \
+    --style compact \
+    --predicate "process == '${APP_NAME}'" \
+    > "${LOG_DIR}/launch-simulator-system.log" || true
+  exit 6
+fi
+
+echo "${APP_NAME} remained alive for 10 seconds after launch (PID ${app_pid})." \
+  | tee -a "${LOG_DIR}/launch-simulator.log"
+xcrun simctl io "${simulator_udid}" screenshot "${LOG_DIR}/launch-simulator.png"
+xcrun simctl spawn "${simulator_udid}" log show \
+  --last 2m \
+  --style compact \
+  --predicate "process == '${APP_NAME}'" \
+  > "${LOG_DIR}/launch-simulator-system.log" || true
+xcrun simctl terminate "${simulator_udid}" "${simulator_bundle_id}"
+xcrun simctl shutdown "${simulator_udid}"
 
 echo "Unsigned IPA created: ${IPA_PATH}"
 cat "${ARTIFACT_DIR}/SHA256SUMS.txt"
