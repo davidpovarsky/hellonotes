@@ -1,6 +1,11 @@
 #if os(iOS)
 import Foundation
 
+enum PrototypeSurfacePresentation {
+    case modal
+    case inspector
+}
+
 enum PrototypeAIRole: Equatable, Sendable {
     case user
     case assistant

@@ -34,8 +34,8 @@ struct iOSContentView: View {
     @State private var editor = EditorModel()
     @State private var showImporter = false
     @State private var showSettings = false
-    @State private var showingEmbeddedAI = false
-    @State private var showingSocialChat = false
+    @State private var isCommunicationInspectorPresented = false
+    @State private var communicationInspectorSection: HelloNotesInspectorSection = .assistant
     @State private var searchText = ""
     @State private var selectedNoteID: Note.ID?
     @State private var selectedTag: String?
@@ -48,6 +48,15 @@ struct iOSContentView: View {
     @State private var showSplash = true
 
     private var focused: Collection? { library.focused }
+
+    private func toggleCommunicationInspector(_ section: HelloNotesInspectorSection) {
+        if isCommunicationInspectorPresented, communicationInspectorSection == section {
+            isCommunicationInspectorPresented = false
+        } else {
+            communicationInspectorSection = section
+            isCommunicationInspectorPresented = true
+        }
+    }
 
     private var prototypeHostContext: PrototypeHostContext {
         guard let note = editor.note else {
@@ -126,24 +135,13 @@ struct iOSContentView: View {
         .sheet(isPresented: $showSettings) {
             iOSSettingsView(settings: appearance)
         }
-        .sheet(isPresented: $showingEmbeddedAI) {
-            NavigationStack {
-                EmbeddedAIChatView(
-                    context: prototypeHostContext,
-                    onClose: { showingEmbeddedAI = false }
-                )
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .presentationContentInteraction(.scrolls)
-        }
-        .sheet(isPresented: $showingSocialChat) {
-            SocialConversationListView(
-                onClose: { showingSocialChat = false }
+        .inspector(isPresented: $isCommunicationInspectorPresented) {
+            HelloNotesCommunicationInspectorView(
+                context: prototypeHostContext,
+                selectedSection: $communicationInspectorSection,
+                onClose: { isCommunicationInspectorPresented = false }
             )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .presentationContentInteraction(.scrolls)
+            .inspectorColumnWidth(min: 320, ideal: 400, max: 520)
         }
         .task {
             if library.isEmpty {
@@ -369,14 +367,14 @@ struct iOSContentView: View {
                 }
 
                 Button {
-                    showingEmbeddedAI = true
+                    toggleCommunicationInspector(.assistant)
                 } label: {
                     Image(systemName: "sparkles")
                 }
                 .accessibilityLabel("AI Assistant")
 
                 Button {
-                    showingSocialChat = true
+                    toggleCommunicationInspector(.socialChat)
                 } label: {
                     Image(systemName: "bubble.left.and.bubble.right")
                 }

@@ -4,10 +4,11 @@ import SwiftUI
 
 struct SocialRoomView: View {
     let conversation: PrototypeConversation
-
-    @State private var viewModel = SocialChatViewModel()
+    var viewModel: SocialChatViewModel
 
     var body: some View {
+        @Bindable var viewModel = viewModel
+
         ChatView(messages: viewModel.messages) { draft in
             viewModel.send(draft)
         } messageBuilder: { parameters in
@@ -45,7 +46,10 @@ struct SocialRoomView: View {
 
 #Preview("Group room with document resource") {
     NavigationStack {
-        SocialRoomView(conversation: PrototypeFixtures.socialConversations[1])
+        SocialRoomView(
+            conversation: PrototypeFixtures.socialConversations[1],
+            viewModel: SocialChatViewModel()
+        )
     }
 }
 #endif

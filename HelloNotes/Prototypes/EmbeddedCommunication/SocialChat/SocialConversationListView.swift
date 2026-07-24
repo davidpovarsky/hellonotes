@@ -2,28 +2,53 @@
 import SwiftUI
 
 struct SocialConversationListView: View {
+    let presentation: PrototypeSurfacePresentation
+    @Binding var navigationPath: NavigationPath
+    var viewModel: SocialChatViewModel
     let onClose: () -> Void
 
+    init(
+        presentation: PrototypeSurfacePresentation = .modal,
+        navigationPath: Binding<NavigationPath> = .constant(NavigationPath()),
+        viewModel: SocialChatViewModel = SocialChatViewModel(),
+        onClose: @escaping () -> Void
+    ) {
+        self.presentation = presentation
+        _navigationPath = navigationPath
+        self.viewModel = viewModel
+        self.onClose = onClose
+    }
+
     var body: some View {
-        NavigationStack {
-            List(PrototypeFixtures.socialConversations) { conversation in
-                NavigationLink(value: conversation) {
-                    SocialConversationRow(conversation: conversation)
+        NavigationStack(path: $navigationPath) {
+            Group {
+                if presentation == .modal {
+                    conversationList
+                        .navigationTitle("Social Chat")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done", action: onClose)
+                                    .accessibilityLabel("Close")
+                            }
+                        }
+                } else {
+                    conversationList
                 }
             }
-            .listStyle(.plain)
-            .navigationTitle("Social Chat")
-            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: PrototypeConversation.self) { conversation in
-                SocialRoomView(conversation: conversation)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done", action: onClose)
-                        .accessibilityLabel("Close")
-                }
+                SocialRoomView(conversation: conversation, viewModel: viewModel)
             }
         }
+    }
+
+    private var conversationList: some View {
+        List(PrototypeFixtures.socialConversations) { conversation in
+            NavigationLink(value: conversation) {
+                SocialConversationRow(conversation: conversation)
+            }
+        }
+        .listStyle(.plain)
     }
 }
 
