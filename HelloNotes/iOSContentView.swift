@@ -34,6 +34,8 @@ struct iOSContentView: View {
     @State private var editor = EditorModel()
     @State private var showImporter = false
     @State private var showSettings = false
+    @State private var showingEmbeddedAI = false
+    @State private var showingSocialChat = false
     @State private var searchText = ""
     @State private var selectedNoteID: Note.ID?
     @State private var selectedTag: String?
@@ -46,6 +48,31 @@ struct iOSContentView: View {
     @State private var showSplash = true
 
     private var focused: Collection? { library.focused }
+
+    private var prototypeHostContext: PrototypeHostContext {
+        guard let note = editor.note else {
+            return PrototypeHostContext(
+                title: "No note open",
+                identifier: "none",
+                collectionName: focused?.name,
+                excerpt: nil,
+                detail: nil,
+                hasDocumentContext: false
+            )
+        }
+
+        let trimmedText = editor.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let wordCount = trimmedText.split(whereSeparator: \.isWhitespace).count
+
+        return PrototypeHostContext(
+            title: note.title,
+            identifier: note.fileURL.lastPathComponent,
+            collectionName: focused?.name,
+            excerpt: trimmedText.isEmpty ? nil : String(trimmedText.prefix(220)),
+            detail: "\(wordCount) words • \(editor.text.count) characters",
+            hasDocumentContext: true
+        )
+    }
 
     /// Open picked folders, expanding any that are (or contain) Obsidian vaults
     /// — so choosing an iCloud Drive folder full of vaults opens each of them.
@@ -98,6 +125,25 @@ struct iOSContentView: View {
         }
         .sheet(isPresented: $showSettings) {
             iOSSettingsView(settings: appearance)
+        }
+        .sheet(isPresented: $showingEmbeddedAI) {
+            NavigationStack {
+                EmbeddedAIChatView(
+                    context: prototypeHostContext,
+                    onClose: { showingEmbeddedAI = false }
+                )
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
+        }
+        .sheet(isPresented: $showingSocialChat) {
+            SocialConversationListView(
+                onClose: { showingSocialChat = false }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
         }
         .task {
             if library.isEmpty {
@@ -292,32 +338,50 @@ struct iOSContentView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if let note = editor.note {
-            Group {
-                switch mode {
-                case .edit:
-                    liveEditor(note)
-                case .markdown:
-                    sourceEditor
-                case .split:
-                    splitEditor(note)
-                default:
-                    preview(note)
+        Group {
+            if let note = editor.note {
+                Group {
+                    switch mode {
+                    case .edit:
+                        liveEditor(note)
+                    case .markdown:
+                        sourceEditor
+                    case .split:
+                        splitEditor(note)
+                    default:
+                        preview(note)
+                    }
                 }
+                .navigationTitle(note.title)
+                .navigationBarTitleDisplayMode(.inline)
+            } else {
+                ContentUnavailableView(
+                    "Select a Note",
+                    systemImage: "doc.text",
+                    description: Text("Choose a note from the list, or create a new one.")
+                )
             }
-            .navigationTitle(note.title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if editor.note != nil {
                     modePicker
                 }
+
+                Button {
+                    showingEmbeddedAI = true
+                } label: {
+                    Image(systemName: "sparkles")
+                }
+                .accessibilityLabel("AI Assistant")
+
+                Button {
+                    showingSocialChat = true
+                } label: {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                }
+                .accessibilityLabel("Social Chat")
             }
-        } else {
-            ContentUnavailableView(
-                "Select a Note",
-                systemImage: "doc.text",
-                description: Text("Choose a note from the list, or create a new one.")
-            )
         }
     }
 
