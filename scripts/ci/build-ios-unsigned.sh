@@ -97,6 +97,9 @@ if [[ -z "${APP_PATH}" || ! -d "${APP_PATH}" ]]; then
   exit 3
 fi
 
+bash "${ROOT_DIR}/scripts/ci/verify-embedded-frameworks.sh" "${APP_PATH}" \
+  | tee "${LOG_DIR}/verify-embedded-frameworks.log"
+
 /usr/bin/ditto "${APP_PATH}" "${PACKAGE_DIR}/Payload/${APP_NAME}.app"
 IPA_PATH="${ARTIFACT_DIR}/${APP_NAME}-unsigned.ipa"
 (

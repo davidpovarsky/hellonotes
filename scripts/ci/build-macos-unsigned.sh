@@ -94,6 +94,19 @@ if [[ -z "${APP_PATH}" || ! -d "${APP_PATH}" ]]; then
   exit 3
 fi
 
+bash "${ROOT_DIR}/scripts/ci/verify-embedded-frameworks.sh" "${APP_PATH}" \
+  | tee "${LOG_DIR}/verify-embedded-frameworks.log"
+
+MAC_EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "${APP_PATH}/Contents/Info.plist")"
+if find "${APP_PATH}" -type d -name 'GiphyUISDK.framework' -print -quit | grep -q .; then
+  echo "error: the macOS application unexpectedly contains GiphyUISDK.framework." >&2
+  exit 5
+fi
+if otool -L "${APP_PATH}/Contents/MacOS/${MAC_EXECUTABLE}" | grep -q 'GiphyUISDK'; then
+  echo "error: the macOS executable unexpectedly references GiphyUISDK." >&2
+  exit 6
+fi
+
 APP_ZIP="${ARTIFACT_DIR}/${APP_NAME}-macOS-unsigned.app.zip"
 ARCHIVE_ZIP="${ARTIFACT_DIR}/${APP_NAME}-macOS-unsigned.xcarchive.zip"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "${APP_PATH}" "${APP_ZIP}"
