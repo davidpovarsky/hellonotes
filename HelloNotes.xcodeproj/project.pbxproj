@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D0EC30000000000000000003 /* ExyteChat in Frameworks */ = {isa = PBXBuildFile; platformFilter = ios; productRef = D0EC30000000000000000002 /* ExyteChat */; };
 		8768A2523001B49B00346ACB /* BeautifulMermaid in Frameworks */ = {isa = PBXBuildFile; productRef = 8768A2513001B49B00346ACB /* BeautifulMermaid */; };
 		8768A2543001B49B00346ACB /* MermaidPlayground in Frameworks */ = {isa = PBXBuildFile; productRef = 8768A2533001B49B00346ACB /* MermaidPlayground */; };
 		8768A2573001B5FE00346ACB /* SwiftGitX in Frameworks */ = {isa = PBXBuildFile; productRef = 8768A2563001B5FE00346ACB /* SwiftGitX */; };
@@ -86,6 +87,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D0EC30000000000000000003 /* ExyteChat in Frameworks */,
 				87B9A8DF3004E31B0026D3ED /* Hub in Frameworks */,
 				87B9A8DE3004E31B0026D3ED /* Tokenizers in Frameworks */,
 				87B9A8DD3004E31B0026D3ED /* MLXLMCommon in Frameworks */,
@@ -164,6 +166,7 @@
 			);
 			name = HelloNotes;
 			packageProductDependencies = (
+				D0EC30000000000000000002 /* ExyteChat */,
 				8768A2513001B49B00346ACB /* BeautifulMermaid */,
 				8768A2533001B49B00346ACB /* MermaidPlayground */,
 				8768A2563001B5FE00346ACB /* SwiftGitX */,
@@ -263,6 +266,7 @@
 			mainGroup = 8759E1D73001AF2E008F8C92;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				D0EC30000000000000000001 /* XCRemoteSwiftPackageReference "Chat" */,
 				87ED170000000000000000C1 /* XCLocalSwiftPackageReference "Packages/NotesEditor" */,
 				8768A24E3001B3D300346ACB /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				8768A2503001B49B00346ACB /* XCRemoteSwiftPackageReference "beautiful-mermaid-swift" */,
@@ -744,6 +748,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D0EC30000000000000000001 /* XCRemoteSwiftPackageReference "Chat" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/exyte/Chat.git";
+			requirement = {
+				kind = revision;
+				revision = 554a0798e424ff15440d5af3b675cc9a5e65b759;
+			};
+		};
 		8768A24E3001B3D300346ACB /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/swiftlang/swift-markdown.git";
@@ -819,6 +831,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		D0EC30000000000000000002 /* ExyteChat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D0EC30000000000000000001 /* XCRemoteSwiftPackageReference "Chat" */;
+			productName = ExyteChat;
+		};
 		8768A2513001B49B00346ACB /* BeautifulMermaid */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8768A2503001B49B00346ACB /* XCRemoteSwiftPackageReference "beautiful-mermaid-swift" */;

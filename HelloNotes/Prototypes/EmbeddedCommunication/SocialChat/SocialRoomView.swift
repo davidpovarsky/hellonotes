@@ -1,0 +1,52 @@
+#if os(iOS)
+import ExyteChat
+import SwiftUI
+
+struct SocialRoomView: View {
+    let conversation: PrototypeConversation
+
+    @State private var viewModel = SocialChatViewModel()
+
+    var body: some View {
+        ChatView(messages: viewModel.messages) { draft in
+            viewModel.send(draft)
+        } messageBuilder: { parameters in
+            if let rawKind = parameters.message.customData["prototypeCardKind"] as? String,
+               let kind = PrototypeSocialCardKind(rawValue: rawKind) {
+                SocialResourceCard(kind: kind) { notice in
+                    viewModel.notice = notice
+                }
+            } else {
+                parameters.defaultMessageView()
+            }
+        }
+        .setAvailableInputs([.text])
+        .chatTheme(themeColor: .accentColor, background: .systemDefault)
+        .keyboardDismissMode(.interactive)
+        .navigationTitle(conversation.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .alert(
+            "Prototype action",
+            isPresented: Binding(
+                get: { viewModel.notice != nil },
+                set: { if !$0 { viewModel.notice = nil } }
+            ),
+            actions: {
+                Button("OK") {
+                    viewModel.notice = nil
+                }
+            },
+            message: {
+                Text(viewModel.notice ?? "")
+            }
+        )
+    }
+}
+
+#Preview("Group room with document resource") {
+    NavigationStack {
+        SocialRoomView(conversation: PrototypeFixtures.socialConversations[1])
+    }
+}
+#endif
+
