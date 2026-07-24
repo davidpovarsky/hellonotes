@@ -206,7 +206,13 @@ import json
 import sys
 
 devices = json.load(sys.stdin)["devices"]
-for runtime_devices in devices.values():
+ios_runtimes = [
+    (tuple(int(part) for part in runtime.rsplit("iOS-", 1)[1].split("-")), runtime_devices)
+    for runtime, runtime_devices in devices.items()
+    if "SimRuntime.iOS-" in runtime
+]
+ios_runtimes.sort(key=lambda item: item[0], reverse=True)
+for _, runtime_devices in ios_runtimes:
     for device in runtime_devices:
         if device["name"].startswith("iPhone") and device.get("isAvailable", False):
             print(device["udid"])
