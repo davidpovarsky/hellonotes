@@ -31,4 +31,3 @@ struct SocialConversationListView: View {
     SocialConversationListView(onClose: {})
 }
 #endif
-

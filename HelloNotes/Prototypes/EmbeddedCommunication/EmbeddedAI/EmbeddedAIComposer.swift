@@ -73,4 +73,3 @@ struct EmbeddedAIComposer: View {
     }
 }
 #endif
-

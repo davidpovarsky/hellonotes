@@ -87,4 +87,3 @@ struct SocialResourceCard: View {
     }
 }
 #endif
-

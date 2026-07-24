@@ -86,4 +86,3 @@ Not produced in the Windows editing environment. Simulator screenshots should be
 ## Build results
 
 Pending GitHub Actions verification for both iOS and macOS through the repository’s existing unsigned-build scripts.
-

@@ -43,4 +43,3 @@ struct EmbeddedAIContextHeader: View {
     }
 }
 #endif
-

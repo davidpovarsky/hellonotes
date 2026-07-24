@@ -25,4 +25,3 @@ struct EmbeddedAIReasoningView: View {
     }
 }
 #endif
-

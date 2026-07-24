@@ -80,4 +80,3 @@ struct SocialConversationRow: View {
     }
 }
 #endif
-

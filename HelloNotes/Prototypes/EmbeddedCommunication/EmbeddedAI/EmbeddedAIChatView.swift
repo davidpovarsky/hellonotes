@@ -132,4 +132,3 @@ struct EmbeddedAIChatView: View {
     }
 }
 #endif
-

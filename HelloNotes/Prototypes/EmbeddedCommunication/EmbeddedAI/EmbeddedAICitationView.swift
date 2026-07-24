@@ -41,4 +41,3 @@ struct EmbeddedAICitationView: View {
     }
 }
 #endif
-

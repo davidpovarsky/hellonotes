@@ -22,4 +22,3 @@ struct EmbeddedAIToolCard: View {
     }
 }
 #endif
-

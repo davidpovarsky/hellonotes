@@ -49,4 +49,3 @@ struct SocialRoomView: View {
     }
 }
 #endif
-

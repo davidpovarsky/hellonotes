@@ -25,4 +25,3 @@ struct PrototypeHostContext: Equatable, Sendable {
     }
 }
 #endif
-
