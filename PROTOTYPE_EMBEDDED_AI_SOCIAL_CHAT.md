@@ -85,4 +85,9 @@ Not produced in the Windows editing environment. Simulator screenshots should be
 
 ## Build results
 
-Pending GitHub Actions verification for both iOS and macOS through the repository’s existing unsigned-build scripts.
+- Final verification: [HelloNotes CI and Unsigned Builds run 30057097797](https://github.com/davidpovarsky/hellonotes/actions/runs/30057097797) succeeded for commit `f202937a90e64d3d734b4b50b5defaa6547856eb`.
+- Environment: `macos-26`, Xcode 26.5, Swift 6.3.2 compiler, `HelloNotes` scheme, Release configuration.
+- `bash scripts/ci/build-ios-unsigned.sh`: succeeded; the unsigned iOS distribution and diagnostics artifacts were uploaded.
+- `bash scripts/ci/build-macos-unsigned.sh`: succeeded; the unsigned macOS app and diagnostics artifacts were uploaded. Exyte Chat was not linked into the macOS build.
+- The initial run `30056506714` exposed two prototype compile issues: a conditional `ShapeStyle` inference error and use of an Exyte modifier not present at the pinned revision. These were fixed by using explicit `Color` values and SwiftUI’s `scrollDismissesKeyboard`. Two prototype fixture-default actor-isolation warnings were also removed before the successful run. An unrelated first-run `xcodebuild` broken-pipe failure during macOS environment selection did not recur.
+- The successful logs contain no warnings from `HelloNotes/Prototypes/EmbeddedCommunication/`. Existing warnings remain in MLX/BeautifulMermaid and pre-existing HelloNotes concurrency code; they were not changed by this isolated prototype.
