@@ -11,7 +11,7 @@ struct EmbeddedAIChatView: View {
     init(
         context: PrototypeHostContext,
         presentation: PrototypeSurfacePresentation = .modal,
-        viewModel: EmbeddedAIChatViewModel = EmbeddedAIChatViewModel(),
+        viewModel: EmbeddedAIChatViewModel,
         onClose: @escaping () -> Void
     ) {
         self.context = context
@@ -161,6 +161,7 @@ struct EmbeddedAIChatView: View {
                 detail: "184 words • 1,236 characters",
                 hasDocumentContext: true
             ),
+            viewModel: EmbeddedAIChatViewModel(),
             onClose: {}
         )
     }
@@ -177,6 +178,7 @@ struct EmbeddedAIChatView: View {
                 detail: nil,
                 hasDocumentContext: false
             ),
+            viewModel: EmbeddedAIChatViewModel(),
             onClose: {}
         )
     }

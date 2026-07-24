@@ -10,7 +10,7 @@ struct SocialConversationListView: View {
     init(
         presentation: PrototypeSurfacePresentation = .modal,
         navigationPath: Binding<NavigationPath> = .constant(NavigationPath()),
-        viewModel: SocialChatViewModel = SocialChatViewModel(),
+        viewModel: SocialChatViewModel,
         onClose: @escaping () -> Void
     ) {
         self.presentation = presentation
@@ -53,6 +53,9 @@ struct SocialConversationListView: View {
 }
 
 #Preview("Conversation list") {
-    SocialConversationListView(onClose: {})
+    SocialConversationListView(
+        viewModel: SocialChatViewModel(),
+        onClose: {}
+    )
 }
 #endif
