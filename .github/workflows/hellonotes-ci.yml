@@ -18,6 +18,7 @@ name: HelloNotes CI and Unsigned Builds
       - main
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -54,16 +55,40 @@ jobs:
       PLATFORM_BUILD_ROOT: ${{ github.workspace }}/build/ci/${{ matrix.platform }}
 
     steps:
+      - name: Live Activity · refresh
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Check out repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Live Activity · refresh
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Select Xcode and record runner environment
         shell: bash
         run: bash scripts/ci/select-xcode.sh
 
+      - name: Live Activity · refresh
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Cache Swift Package Manager downloads
         uses: actions/cache@v5
         with:
@@ -77,10 +102,26 @@ jobs:
             spm-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-xcode-${{ env.XCODE_VERSION }}-
             spm-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-
 
+      - name: Live Activity · refresh
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Resolve Swift packages with retry
         shell: bash
         run: bash scripts/ci/resolve-packages.sh
 
+      - name: Live Activity · refresh
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Compile and package
         id: compile
         continue-on-error: true
@@ -92,6 +133,15 @@ jobs:
             bash scripts/ci/build-macos-unsigned.sh
           fi
 
+      - name: Live Activity · refresh
+        if: always()
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Collect diagnostics and write job summary
         if: always()
         shell: bash
@@ -99,6 +149,18 @@ jobs:
           BUILD_OUTCOME: ${{ steps.compile.outcome || 'not-run' }}
         run: bash scripts/ci/collect-diagnostics.sh
 
+      - name: Live Activity · refresh
+        if: >-
+          steps.compile.outcome == 'failure' &&
+          github.event_name == 'workflow_dispatch' &&
+          inputs.upload_full_derived_data_on_failure
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Package complete DerivedData after failure
         if: >-
           steps.compile.outcome == 'failure' &&
@@ -107,6 +169,15 @@ jobs:
         shell: bash
         run: bash scripts/ci/package-full-derived-data.sh
 
+      - name: Live Activity · refresh
+        if: steps.compile.outcome == 'success'
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Upload distribution files
         if: steps.compile.outcome == 'success'
         uses: actions/upload-artifact@v7
@@ -117,6 +188,15 @@ jobs:
           retention-days: 30
           compression-level: 0
 
+      - name: Live Activity · refresh
+        if: always()
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Upload diagnostics in all cases
         if: always()
         uses: actions/upload-artifact@v7
@@ -135,6 +215,15 @@ jobs:
           retention-days: 30
           compression-level: 6
 
+      - name: Live Activity · refresh
+        if: steps.compile.outcome == 'failure'
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Mark job failed when compilation failed
         if: steps.compile.outcome == 'failure'
         shell: bash
@@ -151,6 +240,14 @@ jobs:
       contents: write
 
     steps:
+      - name: Live Activity · refresh
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Download all successful distribution artifacts
         uses: actions/download-artifact@v8
         with:
@@ -158,6 +255,14 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Live Activity · refresh
+        uses: davidpovarsky/github-automation/live-refresh@main
+        continue-on-error: true
+        with:
+          event: refresh
+          device_id: ${{ secrets.NOTIFY_DEVICE_ID }}
+          token: ${{ secrets.NOTIFY_DEVICE_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Publish or update GitHub Release
         shell: bash
         env:
